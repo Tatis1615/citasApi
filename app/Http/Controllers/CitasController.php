@@ -67,6 +67,7 @@ class CitasController extends Controller
             'fecha_hora' => 'date',
             'estado' => 'nullable|in:pendiente,confirmada,cancelada,completado',
             'motivo' => 'string|max:255',
+            'motivo_cancelacion' => 'nullable|string|max:500',
         ]);
 
         if ($validador->fails()) {
@@ -81,6 +82,16 @@ class CitasController extends Controller
         } else {
             // Prevent client from forcing consultorio_id
             unset($data['consultorio_id']);
+        }
+
+        // Apply cancellation reason if provided and estado=cancelada
+        if (($data['estado'] ?? null) === 'cancelada' && $request->filled('motivo_cancelacion')) {
+            $data['motivo_cancelacion'] = $request->motivo_cancelacion;
+        } else {
+            // Optional: prevent client from arbitrarily setting motivo_cancelacion when not canceled
+            if (isset($data['motivo_cancelacion']) && ($data['estado'] ?? $cita->estado) !== 'cancelada') {
+                unset($data['motivo_cancelacion']);
+            }
         }
 
         $cita->update($data);

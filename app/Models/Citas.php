@@ -12,6 +12,7 @@ class Citas extends Model{
         'fecha_hora',
         'estado',
         'motivo',
+        'motivo_cancelacion',
     ];
 
 
