@@ -77,7 +77,6 @@ class AuthController extends Controller
         $email = $request->email;
         $password = $request->password;
 
-        // Buscar en tabla users (administradores)
         $user = \App\Models\User::where('email', $email)->first();
         if ($user && \Hash::check($password, $user->password)) {
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -94,7 +93,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Buscar en tabla medicos
         $medico = \App\Models\Medicos::where('email', $email)->first();
         if ($medico && \Hash::check($password, $medico->password)) {
             $token = $medico->createToken('auth_token')->plainTextToken;
@@ -111,7 +109,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Buscar en tabla pacientes
         $paciente = \App\Models\Pacientes::where('email', $email)->first();
         if ($paciente && \Hash::check($password, $paciente->password)) {
             $token = $paciente->createToken('auth_token')->plainTextToken;
@@ -172,9 +169,7 @@ class AuthController extends Controller
         ], 200);
     }
 
-    /**
-     * Update the authenticated user's profile (name/email/password) across roles.
-     */
+
     public function updateMe(Request $request)
     {
         $authUser = Auth::user();
@@ -200,13 +195,14 @@ class AuthController extends Controller
                 'name' => 'sometimes|string|max:255',
                 'nombre_m' => 'sometimes|string|max:255',
                 'apellido_m' => 'sometimes|string|max:255',
+                'edad' => 'sometimes|integer|min:0',
+                'telefono' => 'sometimes|string|max:20',
                 'email' => 'sometimes|email|max:255|unique:medicos,email,' . $authUser->id,
                 'password' => 'sometimes|string|min:8',
             ]);
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
-            // Map name to nombre_m / apellido_m if provided
             $update = [];
             if ($request->filled('name')) {
                 $parts = preg_split('/\s+/', trim($request->name), 2);
@@ -215,6 +211,8 @@ class AuthController extends Controller
             }
             if ($request->filled('nombre_m')) $update['nombre_m'] = $request->nombre_m;
             if ($request->filled('apellido_m')) $update['apellido_m'] = $request->apellido_m;
+            if ($request->filled('edad')) $update['edad'] = $request->edad;
+            if ($request->filled('telefono')) $update['telefono'] = $request->telefono;
             if ($request->filled('email')) $update['email'] = $request->email;
             if ($request->filled('password')) $update['password'] = $request->password;
             $authUser->update($update);
@@ -225,6 +223,10 @@ class AuthController extends Controller
                 'name' => 'sometimes|string|max:255',
                 'nombre' => 'sometimes|string|max:255',
                 'apellido' => 'sometimes|string|max:255',
+                'documento' => 'sometimes|string|max:50',
+                'telefono' => 'sometimes|string|max:20',
+                'direccion' => 'sometimes|string|max:255',
+                'fecha_nacimiento' => 'sometimes|date',
                 'email' => 'sometimes|email|max:255|unique:pacientes,email,' . $authUser->id,
                 'password' => 'sometimes|string|min:8',
             ]);
@@ -239,6 +241,10 @@ class AuthController extends Controller
             }
             if ($request->filled('nombre')) $update['nombre'] = $request->nombre;
             if ($request->filled('apellido')) $update['apellido'] = $request->apellido;
+            if ($request->filled('documento')) $update['documento'] = $request->documento;
+            if ($request->filled('telefono')) $update['telefono'] = $request->telefono;
+            if ($request->filled('direccion')) $update['direccion'] = $request->direccion;
+            if ($request->filled('fecha_nacimiento')) $update['fecha_nacimiento'] = $request->fecha_nacimiento;
             if ($request->filled('email')) $update['email'] = $request->email;
             if ($request->filled('password')) $update['password'] = $request->password;
             $authUser->update($update);
