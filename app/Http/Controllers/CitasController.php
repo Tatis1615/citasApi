@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Citas;
+use App\Mail\CitaConfirmacionMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Pacientes;
+use App\Models\Medicos;
+
 
 class CitasController extends Controller
 {
@@ -24,9 +28,10 @@ class CitasController extends Controller
             'motivo' => 'required|string',
         ]);
 
-        // Assign consultorio from medico
-        $medico = \App\Models\Medicos::findOrFail($request->medico_id);
+        // 🩺 Obtener el médico con sus datos
+        $medico = Medicos::findOrFail($request->medico_id);
 
+        // 🗓 Crear la cita
         $cita = Citas::create([
             'paciente_id' => $request->paciente_id,
             'medico_id' => $request->medico_id,
@@ -36,11 +41,31 @@ class CitasController extends Controller
             'motivo' => $request->motivo,
         ]);
 
+        // 👩‍⚕️ Buscar datos del paciente
+        $paciente = Pacientes::findOrFail($request->paciente_id);
+
+        // 💡 Formatear fecha y hora (12h con AM/PM)
+        $fecha = date('d/m/Y', strtotime($cita->fecha_hora));
+        $hora = date('h:i A', strtotime($cita->fecha_hora)); // <-- aquí ya muestra AM/PM
+
+        $nombreMedico = $medico->nombre_m . ' ' . $medico->apellido_m;
+
+            // 📨 Enviar correo con los datos
+            Mail::to($paciente->email)->send(new CitaConfirmacionMail(
+                $paciente->nombre,
+                $fecha,
+                $hora,
+                'EPS Vida Sana',
+                $nombreMedico,
+                $cita->motivo
+            ));
+
         return response()->json([
-            'message' => 'Cita creada correctamente',
+            'message' => 'Cita creada correctamente y correo enviado al paciente',
             'cita' => $cita,
         ], 201);
     }
+
 
 
     public function show(string $id){
