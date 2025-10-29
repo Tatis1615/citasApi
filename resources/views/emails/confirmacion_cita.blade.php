@@ -14,7 +14,7 @@
     <div style="padding:30px;">
       <h2 style="color:#ff6f91;">Hola, {{ $nombre }}</h2>
       <p style="font-size:15px; color:#555;">
-        Tu cita médica ha sido programada con éxito. Aquí tienes los detalles:
+        Tu cita médica ha sido confirmada con éxito. Aquí tienes los detalles:
       </p>
 
       <div style="background:#fff0f5; border-radius:10px; padding:15px; margin:20px 0;">

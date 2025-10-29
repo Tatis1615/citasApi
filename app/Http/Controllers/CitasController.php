@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Citas;
 use App\Mail\CitaConfirmacionMail;
+use App\Mail\CitaRealizadaMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -51,7 +52,7 @@ class CitasController extends Controller
         $nombreMedico = $medico->nombre_m . ' ' . $medico->apellido_m;
 
             // 📨 Enviar correo con los datos
-            Mail::to($paciente->email)->send(new CitaConfirmacionMail(
+            Mail::to($paciente->email)->send(new CitaRealizadaMail(
                 $paciente->nombre,
                 $fecha,
                 $hora,
@@ -78,8 +79,8 @@ class CitasController extends Controller
         return response()->json($cita);
     }
 
-    public function update(Request $request, string $id){
-
+    public function update(Request $request, string $id)
+    {
         $cita = Citas::find($id);
 
         if (!$cita) {
@@ -100,31 +101,58 @@ class CitasController extends Controller
         }
 
         $data = $request->all();
-        // If medico_id changes, update consultorio_id accordingly
+
+        // Si cambia el médico, actualiza consultorio_id
         if ($request->filled('medico_id')) {
-            $medico = \App\Models\Medicos::findOrFail($request->medico_id);
+            $medico = Medicos::findOrFail($request->medico_id);
             $data['consultorio_id'] = $medico->consultorio_id;
         } else {
-            // Prevent client from forcing consultorio_id
             unset($data['consultorio_id']);
         }
 
-        // Apply cancellation reason if provided and estado=cancelada
+        // Manejo del motivo de cancelación
         if (($data['estado'] ?? null) === 'cancelada' && $request->filled('motivo_cancelacion')) {
             $data['motivo_cancelacion'] = $request->motivo_cancelacion;
         } else {
-            // Optional: prevent client from arbitrarily setting motivo_cancelacion when not canceled
             if (isset($data['motivo_cancelacion']) && ($data['estado'] ?? $cita->estado) !== 'cancelada') {
                 unset($data['motivo_cancelacion']);
             }
         }
 
+        // Guardar cambios
         $cita->update($data);
+
+        // ✅ Enviar correo si la cita fue confirmada
+        if (($data['estado'] ?? $cita->estado) === 'confirmada') {
+            try {
+                $paciente = Pacientes::find($cita->paciente_id);
+                $medico = Medicos::find($cita->medico_id);
+
+                if ($paciente && $paciente->email) {
+                    $fechaHora = new \DateTime($cita->fecha_hora);
+                    $fecha = $fechaHora->format('d/m/Y');
+                    $hora = $fechaHora->format('H:i');
+
+                    Mail::to($paciente->email)->send(new CitaConfirmacionMail(
+                        $paciente->nombre,
+                        $fecha,
+                        $hora,
+                        $paciente->eps ?? 'EPS Vida Sana',
+                        $medico->nombre ?? 'Médico asignado',
+                        $cita->motivo ?? 'Consulta general'
+                    ));
+                }
+            } catch (\Exception $e) {
+                \Log::error("Error enviando correo de confirmación: " . $e->getMessage());
+            }
+        }
+
         return response()->json([
             'message' => 'Cita actualizada correctamente',
             'cita' => $cita,
         ]);
     }
+
 
     public function destroy(string $id){
 
